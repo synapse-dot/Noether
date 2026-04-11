@@ -16,6 +16,7 @@ private:
     int         m_line;
     int         m_col;
     bool        m_expectSystemName = false; // ← this was missing
+    bool m_expectImportPath = false;
 
     // ── Character navigation ──────────────────────────────────────
     char        peek() const;
@@ -35,4 +36,5 @@ private:
     Token       scanLatex();
     Token       scanDimension(char c);
     Token       scanSymbol();
+    Token       scanImportPath();
 };

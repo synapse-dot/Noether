@@ -88,6 +88,7 @@ static std::string tokenTypeName(TokenType type) {
         // Misc
         case TokenType::IDENTIFIER:      return "IDENTIFIER";
         case TokenType::COMMENT:         return "COMMENT";
+        case TokenType::IMPORT_PATH:     return "IMPORT_PATH";
         case TokenType::SYSTEM_NAME:     return "SYSTEM_NAME";
         case TokenType::NEWLINE:         return "NEWLINE";
         case TokenType::END_OF_FILE:     return "END_OF_FILE";

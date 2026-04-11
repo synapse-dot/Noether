@@ -110,10 +110,30 @@ Token Lexer::scanComment() {
     return makeToken(TokenType::COMMENT, lexeme);
 }
 
+Token Lexer::scanImportPath() {
+    std::string lexeme;
+
+    // Consume the full path — letters, digits, dots, underscores
+    while (!isAtEnd()) {
+        char c = peek();
+        if (std::isalnum(c) || c == '.' || c == '_')
+            lexeme += advance();
+        else
+            break;
+    }
+
+    if (lexeme.empty())
+        return errorToken("Expected import path after 'import' at line "
+            + std::to_string(m_line));
+
+    return makeToken(TokenType::IMPORT_PATH, lexeme);
+}
+
 // ── Number scanning ───────────────────────────────────────────────────────────
 
 Token Lexer::scanNumber() {
     m_expectSystemName = false;
+    m_expectImportPath = false;
     std::string lexeme;
     bool isReal = false;
     bool hasSciNotation = false;
@@ -180,8 +200,10 @@ Token Lexer::scanIdentifierOrKeyword() {
             type == TokenType::KW_RENDER)
             m_expectSystemName = true;
 
-        return makeToken(type, lexeme);
-    }
+        if (type == TokenType::KW_IMPORT)   // ← add this block
+            m_expectImportPath = true;
+                return makeToken(type, lexeme);
+            }
 
     // Check math-reserved single letters
     auto mathIt = MATH_RESERVED.find(lexeme);
@@ -256,6 +278,7 @@ Token Lexer::scanLatex() {
 
 Token Lexer::scanSymbol() {
     m_expectSystemName = false;
+    m_expectImportPath = false;
     char c = advance();
     switch (c) {
         case '+': return makeToken(TokenType::OP_PLUS,        "+");
@@ -301,6 +324,12 @@ std::vector<Token> Lexer::tokenise() {
             // Discard comments — they never reach the parser
             // Uncomment below to retain them for tooling:
             // tokens.push_back(comment);
+            continue;
+        }
+
+        if (m_expectImportPath) {
+            m_expectImportPath = false;
+            tokens.push_back(scanImportPath());
             continue;
         }
 
