@@ -83,6 +83,7 @@ enum class TokenType {
 
     // ── Identifiers & special ─────────────────────────────────────
     IDENTIFIER,     // any lowercase user-defined name
+    SYSTEM_NAME,     // any PascalCase system name 
     COMMENT,        // # ...  (may be discarded after lexing)
     NEWLINE,        // may be needed for error reporting
     END_OF_FILE,    // sentinel

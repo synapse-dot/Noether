@@ -12,9 +12,10 @@ public:
 
 private:
     std::string m_source;
-    std::size_t m_pos;    // current character position
+    std::size_t m_pos;
     int         m_line;
     int         m_col;
+    bool        m_expectSystemName = false; // ← this was missing
 
     // ── Character navigation ──────────────────────────────────────
     char        peek() const;
