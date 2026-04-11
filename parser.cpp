@@ -333,15 +333,19 @@ SimulateNode Parser::parseSimulate() {
     expect(TokenType::DELIM_LBRACE, "'{'");
 
     while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
-        std::string field = expect(TokenType::IDENTIFIER,
-            "field name").lexeme;
-        expect(TokenType::DELIM_COLON, "':'");
 
-        if (field == "duration")
+        if (check(TokenType::KW_DURATION)) {
+            advance();
+            expect(TokenType::DELIM_COLON, "':'");
             node.duration = parseDimValue();
-        else if (field == "dt")
+
+        } else if (check(TokenType::KW_DT)) {
+            advance();
+            expect(TokenType::DELIM_COLON, "':'");
             node.dt = parseDimValue();
-        else if (field == "initial") {
+
+        } else if (check(TokenType::KW_INITIAL)) {
+            advance();
             expect(TokenType::DELIM_LBRACE, "'{'");
             while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
                 InitialCondition ic;
@@ -353,15 +357,16 @@ SimulateNode Parser::parseSimulate() {
                 match(TokenType::DELIM_COMMA);
             }
             expect(TokenType::DELIM_RBRACE, "'}'");
+
         } else {
-            throw error("Unknown simulate field '" + field + "'");
+            throw error("Unexpected token '" + peek().lexeme
+                + "' in simulate block");
         }
     }
 
     expect(TokenType::DELIM_RBRACE, "'}'");
     return node;
 }
-
 // ── Render ────────────────────────────────────────────────────────────────────
 
 RenderNode Parser::parseRender() {
