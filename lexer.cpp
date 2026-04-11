@@ -136,7 +136,7 @@ Token Lexer::scanNumber() {
     m_expectImportPath = false;
     std::string lexeme;
     bool isReal = false;
-    bool hasSciNotation = false;
+    // bool hasSciNotation = false;
 
     // Integer or decimal part
     while (!isAtEnd() && std::isdigit(peek()))
@@ -152,7 +152,7 @@ Token Lexer::scanNumber() {
 
     // Scientific notation — e or E
     if (!isAtEnd() && (peek() == 'e' || peek() == 'E')) {
-        hasSciNotation = true;
+        // hasSciNotation = true;
         isReal = true;
         lexeme += advance(); // consume 'e'
         if (!isAtEnd() && (peek() == '+' || peek() == '-'))
