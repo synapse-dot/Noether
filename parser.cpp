@@ -377,11 +377,10 @@ RenderNode Parser::parseRender() {
     expect(TokenType::DELIM_LBRACE, "'{'");
 
     while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
-        std::string field = expect(TokenType::IDENTIFIER,
-            "field name").lexeme;
-        expect(TokenType::DELIM_COLON, "':'");
 
-        if (field == "mode") {
+        if (check(TokenType::KW_MODE)) {
+            advance();
+            expect(TokenType::DELIM_COLON, "':'");
             if (check(TokenType::KW_REALTIME)) {
                 node.mode = "realtime";
                 advance();
@@ -392,7 +391,8 @@ RenderNode Parser::parseRender() {
                 throw error("Expected 'realtime' or 'export' for mode");
             }
         } else {
-            throw error("Unknown render field '" + field + "'");
+            throw error("Unexpected token '" + peek().lexeme
+                + "' in render block");
         }
     }
 
