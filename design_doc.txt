@@ -1,0 +1,53 @@
+NOETHER — Language Design Document v0.1
+=======================================
+
+Identity
+--------
+Language name   : Noether
+CLI binary      : dash
+File extension  : .noe
+
+Philosophy
+----------
+Describe the world. The language does the physics. The physics drives the picture.
+Programs supply a physical description and a mathematical description jointly.
+The Reconciler checks they are consistent. Essential physics is built in.
+Everything else is importable from standard libraries.
+
+Type System
+-----------
+Dimensionless   : int, real (distinct; auto-lifted when combined with dimensioned types)
+Base dimensions : L, M, T, I, K, N, J (uppercase; SI-aligned)
+Derived dims    : composed with * and ^ e.g. [M*L*T^-2] for force
+Dimensioned val : magnitude · unit · mathematical structure (scalar, vector, tensor)
+Dimension syntax: suffix [] or prefix [] before identifier (both valid)
+Numeric literals: auto-normalised to scientific notation internally
+Dimensional check: compile-time; mismatched dimensions are hard errors
+
+Syntax
+------
+Blocks          : braces {}
+Comments        : #
+Math notation   : ASCII-first; LaTeX-inspired (\partial, \integral) as fallback
+Dimensions      : [M*L*T^-2] — uppercase, * for multiplication, ^ for exponentiation
+Variables       : lowercase by convention (enforced by compiler)
+Dimension syms  : uppercase by convention (enforced by compiler)
+
+Pipeline
+--------
+.noe → Lexer → Parser → AST → Semantic Analyser → Reconciler → IR → Backend → Output
+
+Reconciler (strict)
+-------------------
+- Takes physical and mathematical layers as a pair
+- Checks mutual consistency — contradiction is a hard error
+- Fills in known physics automatically from physical description alone
+- Derives equations of motion from Lagrangian when provided
+- Ambiguity is a hard error
+
+Backend
+-------
+Integrator      : RK4 (default), Euler (available)
+Renderer        : OpenGL
+Execution       : Interpreted (compiler to follow later)
+Output          : Real-time simulation window, optional data file export
