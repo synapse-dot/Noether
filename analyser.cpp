@@ -214,10 +214,34 @@ DimType Analyser::checkExpr(const ExprNode& expr,
             return DimType{};
 
         case ExprNode::Kind::IDENTIFIER: {
-            if (!table.isDefined(expr.name))
+            if (!table.isDefined(expr.name)) {
+                // Allow conventional time-derivative identifiers for declared
+                // generalized coordinates, e.g. theta1_dot, theta1_ddot.
+                // These are treated as dimensionless for now.
+                auto hasSuffix = [](const std::string& value,
+                                    const std::string& suffix) {
+                    return value.size() >= suffix.size() &&
+                           value.compare(value.size() - suffix.size(),
+                                         suffix.size(), suffix) == 0;
+                };
+
+                std::string base = expr.name;
+                int dotCount = 0;
+                while (hasSuffix(base, "_dot")) {
+                    base = base.substr(0, base.size() - 4);
+                    ++dotCount;
+                }
+
+                if (base != expr.name && table.isDefined(base)) {
+                    DimType derived;
+                    derived.T = -dotCount;
+                    return derived;
+                }
+
                 throw AnalysisError(
                     "Undefined variable '" + expr.name + "'",
                     expr.line, expr.col);
+            }
             Symbol sym = table.lookup(expr.name);
             return sym.dim;
         }
@@ -253,9 +277,23 @@ DimType Analyser::checkExpr(const ExprNode& expr,
                     throw AnalysisError(
                         "Exponent must be dimensionless",
                         expr.line, expr.col);
-                // For now we only support integer exponents in dimension
-                // inference — return dimensionless as approximation
-                // (full exponent tracking is a future enhancement)
+                // Apply integer literal exponents to dimensional quantities.
+                if (expr.right && expr.right->kind == ExprNode::Kind::NUMBER) {
+                    const double exponentValue = expr.right->number;
+                    const int exponentInt = static_cast<int>(exponentValue);
+                    if (exponentValue == static_cast<double>(exponentInt)) {
+                        return DimType{
+                            leftDim.L * exponentInt,
+                            leftDim.M * exponentInt,
+                            leftDim.T * exponentInt,
+                            leftDim.I * exponentInt,
+                            leftDim.K * exponentInt,
+                            leftDim.N * exponentInt,
+                            leftDim.J * exponentInt
+                        };
+                    }
+                }
+                // Non-integer exponent support is deferred.
                 return leftDim;
             }
 
