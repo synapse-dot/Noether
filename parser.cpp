@@ -90,7 +90,11 @@ SystemNode Parser::parseSystem() {
     SystemNode node;
     node.line = peek().line;
     expect(TokenType::KW_SYSTEM, "'system'");
-    node.name = expect(TokenType::SYSTEM_NAME, "system name").lexeme;
+    if (check(TokenType::SYSTEM_NAME) || check(TokenType::IDENTIFIER)) {
+        node.name = advance().lexeme;
+    } else {
+        throw error("Expected system name");
+    }
     expect(TokenType::DELIM_LBRACE, "'{'");
 
     while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
@@ -98,11 +102,73 @@ SystemNode Parser::parseSystem() {
             node.physical = std::make_unique<PhysicalNode>(parsePhysical());
         else if (check(TokenType::KW_MATH))
             node.math = std::make_unique<MathNode>(parseMath());
+        else if (check(TokenType::KW_SIMULATE))
+            node.simulate = std::make_unique<SimulateBlockNode>(parseSimulateBlock());
+        else if (check(TokenType::IDENTIFIER) && peek().lexeme == "visualize")
+            node.visualize = std::make_unique<VisualizeBlockNode>(parseVisualizeBlock());
         else
-            throw error("Expected 'physical' or 'math' block inside system '"
+            throw error("Expected 'physical', 'math', 'simulate', or 'visualize' block inside system '"
                 + node.name + "'");
     }
 
+    expect(TokenType::DELIM_RBRACE, "'}'");
+    return node;
+}
+
+SimulateBlockNode Parser::parseSimulateBlock() {
+    SimulateBlockNode node;
+    node.line = peek().line;
+    expect(TokenType::KW_SIMULATE, "'simulate'");
+    expect(TokenType::DELIM_LBRACE, "'{'");
+    while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
+        if (check(TokenType::KW_INTEGRATOR)) {
+            advance();
+            node.integrator = expect(TokenType::IDENTIFIER, "integrator name").lexeme;
+        } else if (check(TokenType::KW_TIMESTEP)) {
+            advance();
+            node.timestep = parseDimValue();
+        } else if (check(TokenType::KW_DURATION)) {
+            advance();
+            node.duration = parseDimValue();
+        } else if (check(TokenType::KW_EXPORT)) {
+            advance();
+            node.export_path = expect(TokenType::LIT_STRING, "export path string").lexeme;
+            node.has_export_path = true;
+        } else {
+            throw error("Unknown directive '" + peek().lexeme + "' in simulate block");
+        }
+    }
+    expect(TokenType::DELIM_RBRACE, "'}'");
+    return node;
+}
+
+VisualizeBlockNode Parser::parseVisualizeBlock() {
+    VisualizeBlockNode node;
+    node.line = peek().line;
+    expect(TokenType::IDENTIFIER, "'visualize'");
+    expect(TokenType::DELIM_LBRACE, "'{'");
+    while (!check(TokenType::DELIM_RBRACE) && !isAtEnd()) {
+        if (check(TokenType::KW_SCENE)) {
+            advance();
+            node.scene_name = expect(TokenType::LIT_STRING, "scene name string").lexeme;
+        } else if (check(TokenType::KW_PLOT)) {
+            PlotDirective p;
+            p.line = peek().line;
+            advance();
+            if (check(TokenType::IDENTIFIER) || check(TokenType::KW_LET_T) || check(TokenType::KW_LET_V))
+                p.quantity = advance().lexeme;
+            else
+                throw error("Expected plot quantity");
+            expect(TokenType::KW_VS, "'vs'");
+            if (check(TokenType::IDENTIFIER) || check(TokenType::KW_LET_T) || check(TokenType::KW_LET_V))
+                p.against = advance().lexeme;
+            else
+                throw error("Expected plot axis variable");
+            node.plots.push_back(std::move(p));
+        } else {
+            throw error("Unknown directive '" + peek().lexeme + "' in visualize block");
+        }
+    }
     expect(TokenType::DELIM_RBRACE, "'}'");
     return node;
 }

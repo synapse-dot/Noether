@@ -10,6 +10,7 @@ enum class TokenType {
     LIT_INT,        // 42, 7
     LIT_REAL,       // 3.14, 9.8
     LIT_SCI,        // 1.0e3, 9.8e0 (post-normalisation)
+    LIT_STRING,     // "spring_mass.csv"
 
     // ── Dimension symbols ────────────────────────────────────────
     DIM_L,          // L
@@ -50,6 +51,11 @@ enum class TokenType {
     KW_MODE,        // mode
     KW_REALTIME,    // realtime
     KW_EXPORT,      // export
+    KW_INTEGRATOR,  // integrator
+    KW_TIMESTEP,    // timestep
+    KW_SCENE,       // scene
+    KW_PLOT,        // plot
+    KW_VS,          // vs
 
     // ── Keywords — types ─────────────────────────────────────────
     KW_INT,         // int
