@@ -78,6 +78,6 @@ For v0.1, the language remains interpreted, focusing on real-time simulation acc
 
 ## v1.0 Implemented Components
 
-- Lexer, parser, and semantic analyser pipeline is executable through the `dash` CLI.
+- The lexer, parser, and semantic analyser pipeline is executable through the `dash` CLI.
 - CLI usage: `./dash <program.noe>`
 - Includes a runnable sample program: `example_v1.noe`.
