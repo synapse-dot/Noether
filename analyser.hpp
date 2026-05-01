@@ -34,6 +34,7 @@ public:
     void     define(const Symbol& sym);
     bool     isDefined(const std::string& name) const;
     Symbol   lookup(const std::string& name) const;
+    std::unordered_set<std::string> names() const;
     void     dump() const; // for debugging
 
 private:
@@ -52,11 +53,20 @@ private:
 
     // Known system names — populated during first pass
     std::unordered_set<std::string> m_systemNames;
+    std::unordered_map<std::string, std::unordered_set<std::string>> m_systemSymbols;
 
     // ── Top-level checks ──────────────────────────────────────────
     void checkSystem(const SystemNode& node);
     void checkSimulate(const SimulateNode& node);
     void checkRender(const RenderNode& node);
+    void checkSystemSimulate(const std::string& systemName, const SimulateBlockNode& node);
+    void checkSystemVisualize(const std::string& systemName, const VisualizeBlockNode& node);
+    void checkPositiveTimeValue(const DimValue& value,
+                                const std::string& fieldName,
+                                int line) const;
+    void checkTimeDimension(const DimValue& value,
+                            const std::string& fieldName,
+                            int line) const;
 
     // ── Physical layer checks ─────────────────────────────────────
     void populatePhysicalSymbols(const PhysicalNode& node,

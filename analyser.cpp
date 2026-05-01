@@ -18,6 +18,14 @@ Symbol SymbolTable::lookup(const std::string& name) const {
     return m_symbols.at(name);
 }
 
+std::unordered_set<std::string> SymbolTable::names() const {
+    std::unordered_set<std::string> out;
+    out.reserve(m_symbols.size());
+    for (const auto& [name, _] : m_symbols)
+        out.insert(name);
+    return out;
+}
+
 void SymbolTable::dump() const {
     for (const auto& [name, sym] : m_symbols)
         std::cout << "  " << name
@@ -74,6 +82,14 @@ void Analyser::checkSystem(const SystemNode& node) {
 
     // Then check math block against it
     checkMath(*node.math, table);
+
+    m_systemSymbols[node.name] = table.names();
+
+    if (node.simulate)
+        checkSystemSimulate(node.name, *node.simulate);
+
+    if (node.visualize)
+        checkSystemVisualize(node.name, *node.visualize);
 }
 
 // ── Physical symbol population ────────────────────────────────────────────────
@@ -410,6 +426,12 @@ void Analyser::checkSimulate(const SimulateNode& node) {
             "simulate references undefined system '"
             + node.systemName + "'",
             node.line, 0);
+
+    checkPositiveTimeValue(node.duration, "duration", node.line);
+    checkTimeDimension(node.duration, "duration", node.line);
+
+    checkPositiveTimeValue(node.dt, "dt", node.line);
+    checkTimeDimension(node.dt, "dt", node.line);
 }
 
 // ── Render checking ───────────────────────────────────────────────────────────
@@ -420,4 +442,54 @@ void Analyser::checkRender(const RenderNode& node) {
             "render references undefined system '"
             + node.systemName + "'",
             node.line, 0);
+}
+
+void Analyser::checkSystemSimulate(const std::string& systemName,
+                                   const SimulateBlockNode& node) {
+    if (node.integrator != "rk4" && node.integrator != "euler")
+        throw AnalysisError(
+            "system '" + systemName + "' has unsupported integrator '"
+            + node.integrator + "' (expected rk4 or euler)",
+            node.line, 0);
+
+    checkPositiveTimeValue(node.timestep, "timestep", node.line);
+    checkTimeDimension(node.timestep, "timestep", node.line);
+
+    checkPositiveTimeValue(node.duration, "duration", node.line);
+    checkTimeDimension(node.duration, "duration", node.line);
+}
+
+void Analyser::checkSystemVisualize(const std::string& systemName,
+                                    const VisualizeBlockNode& node) {
+    const auto it = m_systemSymbols.find(systemName);
+    if (it == m_systemSymbols.end()) return;
+
+    const auto& symbols = it->second;
+    for (const auto& plot : node.plots) {
+        if (!symbols.count(plot.quantity))
+            throw AnalysisError(
+                "plot references undefined symbol '" + plot.quantity + "'",
+                plot.line, 0);
+        if (!symbols.count(plot.against))
+            throw AnalysisError(
+                "plot references undefined symbol '" + plot.against + "'",
+                plot.line, 0);
+    }
+}
+
+void Analyser::checkPositiveTimeValue(const DimValue& value,
+                                      const std::string& fieldName,
+                                      int line) const {
+    if (!value.magnitude) return;
+    if (value.magnitude->kind == ExprNode::Kind::NUMBER && value.magnitude->number <= 0.0)
+        throw AnalysisError(fieldName + " must be > 0", line, 0);
+}
+
+void Analyser::checkTimeDimension(const DimValue& value,
+                                  const std::string& fieldName,
+                                  int line) const {
+    DimType expected;
+    expected.T = 1;
+    if (!dimsEqual(value.dim, expected))
+        throw AnalysisError(fieldName + " must have time dimension [T]", line, 0);
 }
