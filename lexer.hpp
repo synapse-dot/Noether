@@ -37,4 +37,5 @@ private:
     Token       scanDimension(char c);
     Token       scanSymbol();
     Token       scanImportPath();
+    Token       scanString();
 };

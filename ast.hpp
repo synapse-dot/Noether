@@ -20,6 +20,8 @@ struct GravityNode;
 struct DeclNode;
 struct AssignNode;
 struct SimulateNode;
+struct SimulateBlockNode;
+struct VisualizeBlockNode;
 struct InitialNode;
 struct RenderNode;
 
@@ -161,12 +163,35 @@ struct MathNode {
     int line = 0;
 };
 
+struct PlotDirective {
+    std::string quantity;
+    std::string against;
+    int line = 0;
+};
+
+struct SimulateBlockNode {
+    std::string integrator;
+    DimValue    timestep;
+    DimValue    duration;
+    std::string export_path;
+    bool        has_export_path = false;
+    int line = 0;
+};
+
+struct VisualizeBlockNode {
+    std::string scene_name;
+    std::vector<PlotDirective> plots;
+    int line = 0;
+};
+
 // ── System node ───────────────────────────────────────────────────────────────
 
 struct SystemNode {
     std::string                  name;    // DoublePendulum
     std::unique_ptr<PhysicalNode> physical;
     std::unique_ptr<MathNode>     math;
+    std::unique_ptr<SimulateBlockNode> simulate;
+    std::unique_ptr<VisualizeBlockNode> visualize;
     int line = 0;
 };
 

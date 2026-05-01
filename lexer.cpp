@@ -30,6 +30,11 @@ static const std::unordered_map<std::string, TokenType> KEYWORDS = {
     { "mode",       TokenType::KW_MODE     },
     { "realtime",   TokenType::KW_REALTIME },
     { "export",     TokenType::KW_EXPORT   },
+    { "integrator", TokenType::KW_INTEGRATOR },
+    { "timestep",   TokenType::KW_TIMESTEP },
+    { "scene",      TokenType::KW_SCENE },
+    { "plot",       TokenType::KW_PLOT },
+    { "vs",         TokenType::KW_VS },
     { "int",        TokenType::KW_INT      },
     { "real",       TokenType::KW_REAL     },
 };
@@ -129,6 +134,16 @@ Token Lexer::scanImportPath() {
     return makeToken(TokenType::IMPORT_PATH, lexeme);
 }
 
+Token Lexer::scanString() {
+    std::string lexeme;
+    while (!isAtEnd() && peek() != '"')
+        lexeme += advance();
+    if (isAtEnd())
+        return errorToken("Unterminated string literal");
+    advance(); // closing quote
+    return makeToken(TokenType::LIT_STRING, lexeme);
+}
+
 // ── Number scanning ───────────────────────────────────────────────────────────
 
 Token Lexer::scanNumber() {
@@ -214,21 +229,16 @@ Token Lexer::scanIdentifierOrKeyword() {
     if (m_expectSystemName) {
         m_expectSystemName = false;
 
-        if (!std::isupper(lexeme[0]))
-            return errorToken(
-                "System name '" + lexeme + "' must be PascalCase at line "
-                + std::to_string(m_line)
-            );
-
+        bool pascal = std::isupper(lexeme[0]);
         for (char c : lexeme)
-            if (!std::isalnum(c))
+            if (!std::isalnum(c) && c != '_')
                 return errorToken(
                     "System name '" + lexeme
-                    + "' may only contain letters and digits at line "
+                    + "' may only contain letters, digits, and underscores at line "
                     + std::to_string(m_line)
                 );
-
-        return makeToken(TokenType::SYSTEM_NAME, lexeme);
+        if (pascal) return makeToken(TokenType::SYSTEM_NAME, lexeme);
+        return makeToken(TokenType::IDENTIFIER, lexeme);
     }
 
     // Otherwise enforce lowercase for all user identifiers
@@ -346,6 +356,12 @@ std::vector<Token> Lexer::tokenise() {
         if (c == '\\') {
             advance(); // consume '\'
             tokens.push_back(scanLatex());
+            continue;
+        }
+
+        if (c == '"') {
+            advance(); // opening quote
+            tokens.push_back(scanString());
             continue;
         }
 

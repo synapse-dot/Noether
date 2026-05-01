@@ -43,6 +43,8 @@ private:
     ImportNode   parseImport();
     SystemNode   parseSystem();
     SimulateNode parseSimulate();
+    SimulateBlockNode parseSimulateBlock();
+    VisualizeBlockNode parseVisualizeBlock();
     RenderNode   parseRender();
 
     // ── Physical layer ────────────────────────────────────────────
