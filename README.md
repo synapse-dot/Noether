@@ -1,4 +1,4 @@
-# Noether Language Specification (v1.0)
+# Noether Language Specification (v2.0)
 
 Noether is a domain-specific language engineered for physical modelling and simulation. It operates on the principle of dual description, where the user provides both a physical and a mathematical representation of a system, allowing the internal engine to reconcile and execute the resulting physics.
 
@@ -81,3 +81,20 @@ For v0.1, the language remains interpreted, focusing on real-time simulation acc
 - The lexer, parser, and semantic analyser pipeline is executable through the `dash` CLI.
 - CLI usage: `./dash <program.noe>`
 - Includes a runnable sample program: `example_v1.noe`.
+
+
+## v2.0 Release Focus
+
+- Foundation for simulation-first workflows aimed at real-time visualization across many physics domains.
+- New CLI flags: `dash --help` and `dash --version`.
+- New package target: `make package` builds a release tarball in `dist/`.
+- New v2 sample program scaffold: `example_v2.noe`.
+
+### Packaging and Release
+
+```bash
+make
+make package
+```
+
+This produces `dist/noether-2.0.0.tar.gz`, containing sources, headers, examples, and the `dash` binary.

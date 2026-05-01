@@ -1,0 +1,8 @@
+# Build artifacts
+*.o
+
+# Release output
+/dist/
+
+# Local compiled CLI binary
+/dash

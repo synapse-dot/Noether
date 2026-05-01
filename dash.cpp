@@ -8,6 +8,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <string>
+
+static constexpr const char* NOETHER_VERSION = "2.0.0";
 
 namespace {
 
@@ -26,12 +29,25 @@ std::string readFile(const std::string& path) {
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: dash <file.noe>\n";
+        std::cerr << "Usage: dash [--help] [--version] <file.noe>\n";
         return 1;
     }
 
+    const std::string arg1 = argv[1];
+    if (arg1 == "--help" || arg1 == "-h") {
+        std::cout << "Noether CLI (dash)\n"
+                  << "Usage: dash [--help] [--version] <file.noe>\n"
+                  << "Run a .noe program through lexing, parsing, analysis, and interpretation.\n";
+        return 0;
+    }
+
+    if (arg1 == "--version" || arg1 == "-v") {
+        std::cout << "dash " << NOETHER_VERSION << "\n";
+        return 0;
+    }
+
     try {
-        std::string source = readFile(argv[1]);
+        std::string source = readFile(arg1);
 
         // 1. Lex
         Lexer lexer(source);
