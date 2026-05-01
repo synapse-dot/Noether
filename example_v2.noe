@@ -1,0 +1,28 @@
+# Noether v2 example: spring-mass oscillator prepared for visualization
+
+system spring_mass {
+  physical {
+    mass m = 1.0 [M]
+    stiffness k = 15.0 [M*T^-2]
+    position x = 1.0 [L]
+    velocity v = 0.0 [L*T^-1]
+  }
+
+  math {
+    equation dx_dt = v
+    equation dv_dt = -(k/m) * x
+  }
+
+  simulate {
+    integrator rk4
+    timestep 0.01 [T]
+    duration 10.0 [T]
+    export "spring_mass.csv"
+  }
+
+  visualize {
+    scene "spring_mass_oscillator"
+    plot x vs t
+    plot v vs t
+  }
+}

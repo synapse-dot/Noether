@@ -1,6 +1,8 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -O3 -Wall
 TARGET = dash
+VERSION ?= $(shell cat VERSION)
+PKG_NAME = noether-$(VERSION)
 SRCS = dash.cpp lexer.cpp parser.cpp analyser.cpp reconciler.cpp interpreter.cpp
 OBJS = $(SRCS:.cpp=.o)
 
@@ -17,3 +19,13 @@ clean:
 
 install: all
 	install -m 755 $(TARGET) /usr/local/bin/$(TARGET)
+
+package: all
+	mkdir -p dist
+	tar -czf dist/$(PKG_NAME).tar.gz \
+		README.md LICENSE Makefile VERSION \
+		$(TARGET) \
+		lexer.hpp parser.hpp analyser.hpp reconciler.hpp interpreter.hpp ast.hpp token.hpp \
+		lexer.cpp parser.cpp analyser.cpp reconciler.cpp interpreter.cpp dash.cpp \
+		example_v1.noe example_v2.noe
+	@echo "Created dist/$(PKG_NAME).tar.gz"
