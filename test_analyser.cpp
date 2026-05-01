@@ -4,6 +4,7 @@
 #include "parser.hpp"
 #include "analyser.hpp"
 #include <iostream>
+#include <memory>
 #include <string>
 
 static const std::string TEST_SOURCE = R"(
@@ -42,10 +43,35 @@ simulate DoublePendulum {
 render DoublePendulum { mode: realtime }
 )";
 
+static bool expectAnalysisFailure(const ProgramNode& program,
+                                  const std::string& expectedSubstr) {
+    Analyser analyser(program);
+    try {
+        analyser.analyse();
+        std::cerr << "Expected analysis failure containing: " << expectedSubstr << "\n";
+        return false;
+    } catch (const AnalysisError& e) {
+        return std::string(e.what()).find(expectedSubstr) != std::string::npos;
+    }
+}
+
+static std::unique_ptr<ExprNode> number(double value) {
+    auto node = std::make_unique<ExprNode>();
+    node->kind = ExprNode::Kind::NUMBER;
+    node->number = value;
+    return node;
+}
+
+static ProgramNode parseProgram() {
+    Lexer lexer(TEST_SOURCE);
+    auto tokens = lexer.tokenise();
+    Parser parser(tokens);
+    return parser.parse();
+}
+
 int main() {
     std::cout << "=== Noether Analyser Test ===\n\n";
 
-    // Lex
     Lexer lexer(TEST_SOURCE);
     std::vector<Token> tokens;
     try {
@@ -55,7 +81,6 @@ int main() {
         return 1;
     }
 
-    // Parse
     Parser parser(tokens);
     ProgramNode program;
     try {
@@ -67,14 +92,64 @@ int main() {
         return 1;
     }
 
-    // Analyse
-    Analyser analyser(program);
+    // Base source should analyse successfully.
     try {
+        Analyser analyser(program);
         analyser.analyse();
     } catch (const AnalysisError& e) {
         std::cerr << "[ANALYSIS ERROR] line " << e.line
                   << ": " << e.what() << "\n";
         return 1;
+    }
+
+    // Invalid integrator inside a system simulate block.
+    {
+        ProgramNode caseProgram = parseProgram();
+        auto simulate = std::make_unique<SimulateBlockNode>();
+        simulate->integrator = "verlet";
+        simulate->timestep.magnitude = number(0.01);
+        simulate->timestep.dim.T = 1;
+        simulate->duration.magnitude = number(10.0);
+        simulate->duration.dim.T = 1;
+        simulate->line = 1;
+        caseProgram.systems[0].simulate = std::move(simulate);
+
+        if (!expectAnalysisFailure(caseProgram, "unsupported integrator")) {
+            std::cerr << "[FAIL] invalid integrator test\n";
+            return 1;
+        }
+    }
+
+    // Missing symbol in visualize plot directive.
+    {
+        ProgramNode caseProgram = parseProgram();
+        auto visualize = std::make_unique<VisualizeBlockNode>();
+        visualize->scene_name = "s";
+        visualize->plots.push_back(PlotDirective{"theta1", "missing_symbol", 1});
+        caseProgram.systems[0].visualize = std::move(visualize);
+
+        if (!expectAnalysisFailure(caseProgram, "undefined symbol")) {
+            std::cerr << "[FAIL] missing symbol plot test\n";
+            return 1;
+        }
+    }
+
+    // Negative timestep in system simulate block.
+    {
+        ProgramNode caseProgram = parseProgram();
+        auto simulate = std::make_unique<SimulateBlockNode>();
+        simulate->integrator = "rk4";
+        simulate->timestep.magnitude = number(-0.01);
+        simulate->timestep.dim.T = 1;
+        simulate->duration.magnitude = number(10.0);
+        simulate->duration.dim.T = 1;
+        simulate->line = 1;
+        caseProgram.systems[0].simulate = std::move(simulate);
+
+        if (!expectAnalysisFailure(caseProgram, "timestep must be > 0")) {
+            std::cerr << "[FAIL] negative timestep test\n";
+            return 1;
+        }
     }
 
     std::cout << "=== All OK ===\n";
