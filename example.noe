@@ -25,7 +25,7 @@ system DoublePendulum {
 }
 
 simulate DoublePendulum {
-    duration: 1 [T]
+    duration: 5 [T]
     dt: 0.01 [T]
     initial { theta1: 0.5, theta2: 1.2 }
 }

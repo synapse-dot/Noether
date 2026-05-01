@@ -76,9 +76,56 @@ std::vector<double> solveLinearSystem(std::vector<std::vector<double>>& M, std::
     return x;
 }
 
-void Interpreter::simulate(const SimulateNode& sim) {
-    std::cout << "\n--- Starting Simulation: " << sim.systemName << " ---\n";
+#include <thread>
+#include <chrono>
 
+void renderASCII(double t, double theta1, double theta2, double l1, double l2) {
+    const int WIDTH = 60;
+    const int HEIGHT = 30;
+    const int OFFSET_X = WIDTH / 2;
+    const int OFFSET_Y = 10;
+    const double SCALE = 8.0;
+
+    std::vector<std::string> screen(HEIGHT, std::string(WIDTH, ' '));
+
+    // Calculate positions
+    int x1 = (int)(OFFSET_X + l1 * std::sin(theta1) * SCALE);
+    int y1 = (int)(OFFSET_Y + l1 * std::cos(theta1) * SCALE);
+    int x2 = (int)(x1 + l2 * std::sin(theta2) * SCALE);
+    int y2 = (int)(y1 + l2 * std::cos(theta2) * SCALE);
+
+    // Draw origin
+    screen[OFFSET_Y][OFFSET_X] = 'O';
+
+    // Draw rods (simple line approximation)
+    auto drawLine = [&](int x0, int y0, int x1, int y1, char c) {
+        int dx = std::abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -std::abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy, e2;
+        while (true) {
+            if (x0 >= 0 && x0 < WIDTH && y0 >= 0 && y0 < HEIGHT) screen[y0][x0] = c;
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    };
+
+    drawLine(OFFSET_X, OFFSET_Y, x1, y1, '.');
+    drawLine(x1, y1, x2, y2, ':');
+
+    // Draw masses
+    if (x1 >= 0 && x1 < WIDTH && y1 >= 0 && y1 < HEIGHT) screen[y1][x1] = '@';
+    if (x2 >= 0 && x2 < WIDTH && y2 >= 0 && y2 < HEIGHT) screen[y2][x2] = '#';
+
+    // Print screen
+    std::cout << "\033[H\033[J"; // Clear screen (ANSI)
+    std::cout << "Noether v1.0 — ASCII Renderer | Time: " << std::fixed << std::setprecision(2) << t << "s\n";
+    for (const auto& row : screen) std::cout << row << "\n";
+    std::cout << "Legend: O (Origin), @ (Mass 1), # (Mass 2)\n";
+}
+
+void Interpreter::simulate(const SimulateNode& sim) {
     // Find the system
     const SystemNode* sysNode = nullptr;
     for (const auto& s : m_program.systems) {
@@ -119,15 +166,13 @@ void Interpreter::simulate(const SimulateNode& sim) {
     double dt = m_evaluator.evaluate(*sim.dt.magnitude, {});
     double t = 0.0;
 
-    std::cout << "Time      ";
-    for (const auto& q : eq.coordinates) std::cout << std::setw(12) << q;
-    std::cout << "\n------------------------------------------------\n";
+    double l1 = env["l1"];
+    double l2 = env["l2"];
 
     while (t <= duration) {
-        // Print state
-        std::cout << std::fixed << std::setprecision(2) << t << "      ";
-        for (const auto& q : eq.coordinates) std::cout << std::setw(12) << env[q];
-        std::cout << "\n";
+        // Render current state
+        renderASCII(t, env["theta1"], env["theta2"], l1, l2);
+        std::this_thread::sleep_for(std::chrono::milliseconds((int)(dt * 1000)));
 
         // 1. Evaluate M and F
         int n = eq.coordinates.size();
