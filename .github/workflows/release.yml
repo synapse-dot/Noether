@@ -1,0 +1,39 @@
+name: Release Noether
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build Noether
+        run: |
+          g++ -std=c++17 dash.cpp lexer.cpp parser.cpp analyser.cpp reconciler.cpp interpreter.cpp -o dash
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dash
+          name: Noether Release ${{ github.ref_name }}
+          body: |
+            Noether v1.0 - Domain-Specific Language for Physical Modelling.
+            
+            ### Features:
+            - Euler-Lagrange Symbolic Reconciler.
+            - RK4/Euler Integrator.
+            - ASCII Terminal Visualization.
+            - Dimensional Type Safety.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
