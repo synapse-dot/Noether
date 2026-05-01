@@ -1,11 +1,13 @@
+// dash.cpp — The Noether CLI
+
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "analyser.hpp"
-
-#include <fstream>
+#include "reconciler.hpp"
+#include "interpreter.hpp"
 #include <iostream>
+#include <fstream>
 #include <sstream>
-#include <string>
 
 namespace {
 
@@ -20,45 +22,43 @@ std::string readFile(const std::string& path) {
     return buffer.str();
 }
 
-int runPipeline(const std::string& source) {
-    Lexer lexer(source);
-    const auto tokens = lexer.tokenise();
-
-    Parser parser(tokens);
-    const ProgramNode program = parser.parse();
-
-    Analyser analyser(program);
-    analyser.analyse();
-
-    std::cout << "Noether v1 pipeline success:\n";
-    std::cout << "  imports: " << program.imports.size() << "\n";
-    std::cout << "  systems: " << program.systems.size() << "\n";
-    std::cout << "  simulate blocks: " << program.simulations.size() << "\n";
-    std::cout << "  render blocks: " << program.renders.size() << "\n";
-    return 0;
-}
-
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
+    if (argc < 2) {
         std::cerr << "Usage: dash <file.noe>\n";
-        return 64;
+        return 1;
     }
 
     try {
-        const std::string source = readFile(argv[1]);
-        return runPipeline(source);
+        std::string source = readFile(argv[1]);
+
+        // 1. Lex
+        Lexer lexer(source);
+        auto tokens = lexer.tokenise();
+
+        // 2. Parse
+        Parser parser(tokens);
+        auto program = parser.parse();
+
+        // 3. Analyse
+        Analyser analyser(program);
+        analyser.analyse();
+
+        // 4. Run Interpreter (includes Reconciler)
+        Interpreter interpreter(program);
+        interpreter.run();
+
     } catch (const ParseError& e) {
-        std::cerr << "[PARSE ERROR] line " << e.line << ", col " << e.col
-                  << ": " << e.what() << "\n";
+        std::cerr << "[PARSE ERROR] line " << e.line << ": " << e.what() << "\n";
         return 1;
     } catch (const AnalysisError& e) {
-        std::cerr << "[ANALYSIS ERROR] line " << e.line << ", col " << e.col
-                  << ": " << e.what() << "\n";
+        std::cerr << "[ANALYSIS ERROR] line " << e.line << ": " << e.what() << "\n";
         return 1;
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] " << e.what() << "\n";
         return 1;
     }
+
+    return 0;
 }

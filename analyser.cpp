@@ -166,8 +166,21 @@ void Analyser::checkMath(const MathNode& node, SymbolTable& table) {
         checkDecl(decl, table);
 
     // Then check assignments
-    for (const auto& assign : node.assignments)
+    for (const auto& assign : node.assignments) {
         checkAssign(assign, table);
+        
+        // If we just assigned 'lag', check its dimensions
+        if (assign.target == "lag") {
+            Symbol lagSym = table.lookup("lag");
+            DimType energyDim;
+            energyDim.M = 1; energyDim.L = 2; energyDim.T = -2;
+            if (!dimsEqual(lagSym.dim, energyDim)) {
+                throw AnalysisError(
+                    "Lagrangian 'lag' must have dimensions of Energy [M*L^2*T^-2]",
+                    assign.line, 0);
+            }
+        }
+    }
 }
 
 void Analyser::checkDecl(const DeclNode& node, SymbolTable& table) {
@@ -182,6 +195,23 @@ void Analyser::checkDecl(const DeclNode& node, SymbolTable& table) {
         sym.type = var.type;
         sym.line = var.line;
         table.define(sym);
+
+        // Also define _dot and _ddot for physical variables
+        Symbol dot;
+        dot.name = var.name + "_dot";
+        dot.type = "dimensioned";
+        dot.dim  = sym.dim;
+        dot.dim.T -= 1;
+        dot.line = var.line;
+        table.define(dot);
+
+        Symbol ddot;
+        ddot.name = var.name + "_ddot";
+        ddot.type = "dimensioned";
+        ddot.dim  = sym.dim;
+        ddot.dim.T -= 2;
+        ddot.line = var.line;
+        table.define(ddot);
     }
 }
 
@@ -215,9 +245,7 @@ DimType Analyser::checkExpr(const ExprNode& expr,
 
         case ExprNode::Kind::IDENTIFIER: {
             if (!table.isDefined(expr.name)) {
-                // Allow conventional time-derivative identifiers for declared
-                // generalized coordinates, e.g. theta1_dot, theta1_ddot.
-                // These are treated as dimensionless for now.
+                // Remote fallback: allow conventional time-derivative identifiers
                 auto hasSuffix = [](const std::string& value,
                                     const std::string& suffix) {
                     return value.size() >= suffix.size() &&
@@ -233,8 +261,9 @@ DimType Analyser::checkExpr(const ExprNode& expr,
                 }
 
                 if (base != expr.name && table.isDefined(base)) {
-                    DimType derived;
-                    derived.T = -dotCount;
+                    Symbol sym = table.lookup(base);
+                    DimType derived = sym.dim;
+                    derived.T -= dotCount;
                     return derived;
                 }
 
@@ -277,23 +306,20 @@ DimType Analyser::checkExpr(const ExprNode& expr,
                     throw AnalysisError(
                         "Exponent must be dimensionless",
                         expr.line, expr.col);
-                // Apply integer literal exponents to dimensional quantities.
-                if (expr.right && expr.right->kind == ExprNode::Kind::NUMBER) {
-                    const double exponentValue = expr.right->number;
-                    const int exponentInt = static_cast<int>(exponentValue);
-                    if (exponentValue == static_cast<double>(exponentInt)) {
-                        return DimType{
-                            leftDim.L * exponentInt,
-                            leftDim.M * exponentInt,
-                            leftDim.T * exponentInt,
-                            leftDim.I * exponentInt,
-                            leftDim.K * exponentInt,
-                            leftDim.N * exponentInt,
-                            leftDim.J * exponentInt
-                        };
-                    }
+
+                // If exponent is a literal number, we can infer the new dimension
+                if (expr.right->kind == ExprNode::Kind::NUMBER) {
+                    double p = expr.right->number;
+                    return DimType{
+                        static_cast<int>(leftDim.L * p),
+                        static_cast<int>(leftDim.M * p),
+                        static_cast<int>(leftDim.T * p),
+                        static_cast<int>(leftDim.I * p),
+                        static_cast<int>(leftDim.K * p),
+                        static_cast<int>(leftDim.N * p),
+                        static_cast<int>(leftDim.J * p)
+                    };
                 }
-                // Non-integer exponent support is deferred.
                 return leftDim;
             }
 
