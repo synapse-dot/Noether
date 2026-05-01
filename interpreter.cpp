@@ -3,12 +3,10 @@
 #include "interpreter.hpp"
 #include "reconciler.hpp"
 #include "simulation_engine.hpp"
+#include "renderer/opengl_renderer.hpp"
 
 #include <cmath>
-#include <chrono>
-#include <iomanip>
 #include <iostream>
-#include <thread>
 
 double Evaluator::evaluate(const ExprNode& expr, const std::map<std::string, double>& env) const {
     switch (expr.kind) {
@@ -54,60 +52,6 @@ void Interpreter::run() {
     }
 }
 
-void renderASCII(const FrameState& frame) {
-    const int WIDTH = 60;
-    const int HEIGHT = 30;
-    const int OFFSET_X = WIDTH / 2;
-    const int OFFSET_Y = 10;
-    const double SCALE = 8.0;
-
-    std::vector<std::string> screen(HEIGHT, std::string(WIDTH, ' '));
-
-    const auto q = frame.quantities;
-    const int x1 = static_cast<int>(OFFSET_X + q.at("x1") * SCALE);
-    const int y1 = static_cast<int>(OFFSET_Y + q.at("y1") * SCALE);
-
-    int x2 = x1;
-    int y2 = y1;
-    if (q.count("x2") && q.count("y2")) {
-        x2 = static_cast<int>(OFFSET_X + q.at("x2") * SCALE);
-        y2 = static_cast<int>(OFFSET_Y + q.at("y2") * SCALE);
-    }
-
-    screen[OFFSET_Y][OFFSET_X] = 'O';
-
-    auto drawLine = [&](int x0, int y0, int x1p, int y1p, char c) {
-        int dx = std::abs(x1p - x0), sx = x0 < x1p ? 1 : -1;
-        int dy = -std::abs(y1p - y0), sy = y0 < y1p ? 1 : -1;
-        int err = dx + dy;
-        while (true) {
-            if (x0 >= 0 && x0 < WIDTH && y0 >= 0 && y0 < HEIGHT) screen[y0][x0] = c;
-            if (x0 == x1p && y0 == y1p) break;
-            int e2 = 2 * err;
-            if (e2 >= dy) {
-                err += dy;
-                x0 += sx;
-            }
-            if (e2 <= dx) {
-                err += dx;
-                y0 += sy;
-            }
-        }
-    };
-
-    drawLine(OFFSET_X, OFFSET_Y, x1, y1, '.');
-    drawLine(x1, y1, x2, y2, ':');
-
-    if (x1 >= 0 && x1 < WIDTH && y1 >= 0 && y1 < HEIGHT) screen[y1][x1] = '@';
-    if (x2 >= 0 && x2 < WIDTH && y2 >= 0 && y2 < HEIGHT) screen[y2][x2] = '#';
-
-    std::cout << "\033[H\033[J";
-    std::cout << "Noether v1.0 — ASCII Renderer | Time: " << std::fixed << std::setprecision(2)
-              << frame.time << "s\n";
-    for (const auto& row : screen) std::cout << row << "\n";
-    std::cout << "Legend: O (Origin), @ (Mass 1), # (Mass 2)\n";
-}
-
 void Interpreter::simulate(const SimulateNode& sim) {
     const SystemNode* sysNode = nullptr;
     for (const auto& s : m_program.systems) {
@@ -144,10 +88,9 @@ void Interpreter::simulate(const SimulateNode& sim) {
 
     SimulationEngine engine(eq, m_evaluator, std::move(env), dt);
 
-    for (double t = 0.0; t <= duration; t += dt) {
-        const FrameState frame = engine.currentFrame();
-        renderASCII(frame);
-        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(dt * 1000)));
-        engine.step();
-    }
+    SceneConfig sceneConfig;
+    sceneConfig.durationSeconds = duration;
+    sceneConfig.xWorldHalfExtent = 2.0;
+
+    ::run(sceneConfig, engine);
 }

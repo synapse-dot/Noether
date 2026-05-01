@@ -3,7 +3,7 @@ CXXFLAGS = -std=c++17 -O3 -Wall
 TARGET = dash
 VERSION ?= $(shell cat VERSION)
 PKG_NAME = noether-$(VERSION)
-SRCS = dash.cpp lexer.cpp parser.cpp analyser.cpp reconciler.cpp interpreter.cpp simulation_engine.cpp
+SRCS = dash.cpp lexer.cpp parser.cpp analyser.cpp reconciler.cpp interpreter.cpp simulation_engine.cpp renderer/opengl_renderer.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 all: $(TARGET)
